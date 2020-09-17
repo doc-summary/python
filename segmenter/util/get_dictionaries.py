@@ -6,7 +6,7 @@ import zipfile
 import os
 from io import BytesIO
 
-def get_cedict(ret='sf')
+def get_cedict(ret='sf'):
     with requests.Session() as sess:
         resp = sess.get('https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.zip')
 
