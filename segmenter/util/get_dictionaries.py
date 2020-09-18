@@ -18,10 +18,10 @@ def get_cedict(ret='sf'):
             with zipfile.ZipFile(f, 'r') as z:
                 z.extractall()
 
-    with open('cedict_ts.u8', 'r') as f:
-        all_wds = [l.strip().split('/') for l in f.readlines()]
-        lf = [wd.split()[0].strip() for wd in all_wds[1:]]
-        sf = [wd.split()[1].strip() for wd in all_wds[1:]]
+    with open('cedict_ts.u8', 'r', encoding='utf-8') as f:
+        all_wds = [l.strip().split('/') for l in f.readlines() if not l.startswith('#')]
+        lf = [wd[0].strip().split()[0] for wd in all_wds[1:]]
+        sf = [wd[0].strip().split()[1] for wd in all_wds[1:]]
         
     if ret == 'sf':
         return sf
