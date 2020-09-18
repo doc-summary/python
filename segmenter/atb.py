@@ -28,7 +28,7 @@ def setDict(dataDict, maplist, value, x=-1):
         setDict(dataDict, maplist, value, x-1)
     else:
         if x == -1:
-            recall.setdefalut(maplist[x], {})
+            recall.setdefault(maplist[x], {})
             recall[maplist[x]].update( {"$" : 1} )
         else:
             recall.setdefault(maplist[x], {})
