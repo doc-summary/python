@@ -1,5 +1,4 @@
-###TODO: get foreign language dictionary file (CEDICT or similar)
-### parse dict into list of words
+###TODO: Make this into a class.
 
 import string
 import operator
