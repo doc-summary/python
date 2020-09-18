@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# CEDICT utf-8 file
+segmenter/util/cedict_ts.u8
