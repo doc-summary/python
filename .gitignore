@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 # CEDICT utf-8 file
-segmenter/util/cedict_ts.u8
+*.u8
