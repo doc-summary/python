@@ -4,12 +4,13 @@ from pprint import pprint
 from segmenter.atb import *
 from segmenter.util.get_dictionaries import *
 
+
 sf = get_cedict()
 
-alpha_dict = dict()
+atb = ATB()
 
 for word in sf:
-    setDict(alpha_dict, word, word)
+    atb.insert(word, 1)
 
 cases = [
     "中国军方此举是针对当前台海形势和维护国家主权而采取的必要行动",
@@ -20,14 +21,14 @@ cases = [
 def print_segmented(s, compare=False):
     if compare:
         print(s, '\n')
-    big = getMatches(alpha_dict, s)
+    big = atb.getMatches(s)
 
     i = 0
     while i < len(big):
         outer = big[i]
         if outer:
             item = max(outer, key=lambda x: len(x[1]))
-            print(item[0], end=' ')
+            print(item[0], end=' | ')
             i += len(item[1])
         else:
             i += 1
