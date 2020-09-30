@@ -1,5 +1,3 @@
-#! /bin/env/python38
-
 from pprint import pprint
 from segmenter.atb import *
 from segmenter.util.get_dictionaries import *
