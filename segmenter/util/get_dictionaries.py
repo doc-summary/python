@@ -1,12 +1,13 @@
 # retrieves various dictionaries for use with atb.py
 # uses requests lib (pip install requests)
 
+from typing import List, Any
 import requests
 import zipfile
 import os
 from io import BytesIO
 
-def get_cedict(ret='sf'):
+def get_cedict(ret: str='sf') -> List[Any]:
     '''Get Chinese CEDICT and return a word list containing either:
     'sf' : short form characters (default)
     'lf' : long form characters
