@@ -1,6 +1,7 @@
 from typing import Optional, Any, List, Dict
 
 class Node():
+    """One Node of a Trie"""
     def __init__(self) -> None:
         self.children: Dict[str, Node] = {}
         self.value: Optional[Any] = None
@@ -8,9 +9,15 @@ class Node():
 
 
 class ATB():
-    
+    """Trie structure, with functions for insertion, retrieval, and deletion."""
     def __init__(self):
         self.root = Node()
+    
+    def search(self, key:str) -> Optional[Any]:
+        """Alias for find() function.
+        
+        Find `key` in alphadict; return `key`'s value"""
+        return self.find(key)
 
     def find(self, key: str) -> Optional[Any]:
         '''Find `key` in alphadict; return `key`'s value.'''
