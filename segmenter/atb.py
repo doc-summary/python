@@ -1,8 +1,3 @@
-import string
-import operator
-import copy
-from itertools import product
-
 from typing import Optional, Any, List, Dict
 
 class Node():
@@ -18,7 +13,7 @@ class ATB():
         self.root = Node()
 
     def find(self, key: str) -> Optional[Any]:
-        '''Find `key` in alphadict'''
+        '''Find `key` in alphadict; return `key`'s value.'''
         node = self.root
         for char in key:
             if char in node.children:
@@ -28,7 +23,7 @@ class ATB():
         return node.value
 
     def insert(self, key: str, value: Any) -> None:
-        """Insert key/value pair into alphadict"""
+        """Insert key/value pair into trie, iteratively."""
         node = self.root
         for char in key:
             if char not in node.children:
@@ -38,7 +33,7 @@ class ATB():
         node.value = value
 
     def delete(self, key: str) -> bool:
-        '''delete `key` from the trie'''
+        '''delete `key` from the trie, recursively, if `key` exists in trie.'''
 
         def _delete(node: Node, key: str, d: int) -> bool:
             '''clear the node corresponding to key[d], and delete the child 
@@ -57,6 +52,11 @@ class ATB():
 
 
     def keys_with_prefix(self, prefix: str) -> List[str]:
+        '''Check to see if string `prefix` is a prefix for any existing words in the
+        trie. If it is, return a list of all words in the trie that start with `prefix`.
+        
+        Beware using this function on single characters; the resulting list can be 
+        massive and slow down the overall program significantly.'''
         
         def _collect(x: Optional[Node], prefix: List[str], results: List[str]) -> None:
             """append keys under node `x` matching the given prefix to `results`."""
@@ -89,9 +89,14 @@ class ATB():
 
 
     def getMatches(self, s: str) -> List[Any]:
-        '''Search alphaDict dictionary tree for all possible word matches in string s'''
+        '''Search alphaDict dictionary tree for all possible word matches in string s.
+        
+        Returns a list composed of tuples of the matching term, and the index range in 
+        `s` where that term was found, e.g. (term, range(start_index, stop_index))'''
+
         sets = []
         all_words = []
+
         for i in range(len(s)):
             for j in range(len(s)+1):
                 proto = s[i:j]
@@ -99,15 +104,15 @@ class ATB():
                 prefix = self.keys_with_prefix(proto) if len(proto) > 1 else [proto]
 
                 if result:
-                    sets.append([proto, range(i, j)])
+                    sets.append((proto, range(i, j)))
                 else:
                     if prefix:
                         continue
                     else:
-                        all_words.append(list(sets))
+                        all_words.append(tuple(sets))
                         sets.clear()
                         break
         if sets:
-            all_words.append(list(sets))
+            all_words.append(tuple(sets))
 
         return(all_words)
