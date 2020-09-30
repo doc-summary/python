@@ -1,57 +1,113 @@
-###TODO: Make this into a class.
-
 import string
 import operator
 import copy
-from functools import reduce
 from itertools import product
 
+from typing import Optional, Any, List, Dict
 
-def getDict(dataDict, maplist):
-    try:
-        return reduce(operator.getitem, maplist, dataDict)
-    except:
-        return False
-        
+class Node():
+    def __init__(self) -> None:
+        self.children: Dict[str, Node] = {}
+        self.value: Optional[Any] = None
 
-def setDict(dataDict, maplist, value, x=-1):
-    '''Create alpha tree dictionary.
+
+
+class ATB():
     
-    example usage:
-    >>> d = {}
-    >>> for word in sf: #list of words
-            setDict(d, word, word)
-    '''
-    recall = getDict(dataDict, maplist[:x])
-    if recall is False:
-        setDict(dataDict, maplist, value, x-1)
-    else:
-        if x == -1:
-            recall.setdefault(maplist[x], {})
-            recall[maplist[x]].update( {"$" : 1} )
-        else:
-            recall.setdefault(maplist[x], {})
-            recall[maplist[x]].update({maplist[x+1] : {}})
-            setDict(dataDict, maplist, value, x+1)
-            
-            
-def getMatches(alphaDict, s):
-    '''Search alphaDict dictionary tree for all possible word matches in string s'''
-    sets = []
-    all_words = []
-    for num1 in range(len(s)):
-        for num2 in range(len(s)+1):
-            rw = s[num1:num2]
-            result = getDict(alphaDict, rw)
-            if result and result.get('$'):
-                sets.append([rw, range(num1, num2)])
+    def __init__(self):
+        self.root = Node()
+
+    def find(self, key: str) -> Optional[Any]:
+        '''Find `key` in alphadict'''
+        node = self.root
+        for char in key:
+            if char in node.children:
+                node = node.children[char]
             else:
-                if result is False:
-                    all_words.append(list(sets))
-                    sets.clear()
-                    break
-                    
-    if sets: # any leftover values in sets, append to all_words
-        all_words.append(list(sets))
+                return None
+        return node.value
+
+    def insert(self, key: str, value: Any) -> None:
+        """Insert key/value pair into alphadict"""
+        node = self.root
+        for char in key:
+            if char not in node.children:
+                node.children[char] = Node()
+            node = node.children[char]
+
+        node.value = value
+
+    def delete(self, key: str) -> bool:
+        '''delete `key` from the trie'''
+
+        def _delete(node: Node, key: str, d: int) -> bool:
+            '''clear the node corresponding to key[d], and delete the child 
+            key[d+1] if that subtrie is completely empty, and return whether 
+            `node` has been cleared.'''
+            if d == len(key):
+                node.value = None
+            else:
+                c = key[d]
+                if c in node.children and _delete(node.children[c], key, d+1):
+                    del node.children[c]
+
+            return node.value is None and len(node.children == 0)
+
+        return _delete(self.root, key, 0)
+
+
+    def keys_with_prefix(self, prefix: str) -> List[str]:
         
-    return all_words
+        def _collect(x: Optional[Node], prefix: List[str], results: List[str]) -> None:
+            """append keys under node `x` matching the given prefix to `results`."""
+            if x is None:
+                return
+            if x.value is not None:
+                prefix_str = "".join(prefix)
+                results.append(prefix_str)
+            for c in x.children:
+                prefix.append(c)
+                _collect(x.children[c], prefix, results)
+                del prefix[-1]
+
+        def _get_node(node: Node, key: str) -> Optional[Node]:
+            '''Find a node using `key`'''
+            for char in key:
+                if char in node.children:
+                    node = node.children[char]
+
+                else:
+                    return None
+            return node
+
+        root = self.root
+        results: List[str] = []
+        x = _get_node(root, prefix)
+        _collect(x, list(prefix), results)
+        
+        return results
+
+
+    def getMatches(self, s: str) -> List[Any]:
+        '''Search alphaDict dictionary tree for all possible word matches in string s'''
+        sets = []
+        all_words = []
+        for i in range(len(s)):
+            for j in range(len(s)+1):
+                proto = s[i:j]
+                result = self.find(proto)
+                prefix = self.keys_with_prefix(proto) if len(proto) > 1 else [proto]
+
+                if result:
+                    sets.append([proto, range(i, j)])
+                else:
+                    if prefix:
+                        continue
+                    else:
+                        all_words.append(list(sets))
+                        sets.clear()
+                        break
+        if sets:
+            all_words.append(list(sets))
+
+        return(all_words)
