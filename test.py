@@ -16,23 +16,7 @@ cases = [
     "台湾总统蔡英文2016年就任台湾总统以来一直拒绝接受北京要求的“九二共识”，以及“一中原则”"
 ]
 
-def print_segmented(s: str, compare: bool=False) -> None:
-    if compare:
-        print(s, '\n')
-    big = atb.getMatches(s)
 
-    i = 0
-    while i < len(big):
-        outer = big[i]
-        if outer:
-            item = max(outer, key=lambda x: len(x[1]))
-            print(item[0], end=' | ')
-            i += len(item[1])
-        else:
-            i += 1
-    print()
-    print('-'*50)
-
-for case in cases:
-    print_segmented(case, compare=True)
-
+pprint(atb._flatten(cases[0]))
+    #print()
+    #print_segmented(case, compare=True)
