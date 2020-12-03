@@ -1,5 +1,54 @@
 from typing import Optional, Any, List, Dict, Tuple, Union
 import itertools
+from collections import defaultdict, namedtuple
+import re
+
+class Graph():
+    """Simple graph obj to work with Dijkstra's Algorithm"""
+    def __init__(self):
+        self.edges = defaultdict(list)
+        self.weights = {}
+        
+    def add_edge(self, from_node, to_node, weight):
+        """Add an edge to the graph in one direction: from_node -> to_node """
+        self.edges[from_node].append(to_node)
+        self.weights[(from_node, to_node)] = weight
+        
+    def dijkstra(self, initial, end):
+        shortest_paths = {initial: (None, 0)}
+        current_node = initial
+        visited = set()
+        
+        while current_node != end:
+            visited.add(current_node)
+            destinations = self.edges[current_node]
+            weight_to_current = shortest_paths[current_node][1]
+            
+            for next_node in destinations:
+                weight = self.weights[(current_node, next_node)] + weight_to_current
+                if next_node not in shortest_paths:
+                    shortest_paths[next_node] = (current_node, weight)
+                else:
+                    current_shortest_weight = shortest_paths[next_node][1]
+                    if current_shortest_weight > weight:
+                        shortest_paths[next_node] = (current_node, weight)
+            next_destinations = {node: shortest_paths[node] for node in shortest_paths if node not in visited}
+            
+            if not next_destinations:
+                return False
+            
+            # next node is the destination with the lowest weight
+            current_node = min(next_destinations, key=lambda k: next_destinations[k][1])
+            
+        # work back through destinations in shortest path
+        path = []
+        while current_node is not None:
+            path.append(current_node)
+            next_node = shortest_paths[current_node][0]
+            current_node = next_node
+            
+        # spin back flip it and reverse it
+        return path[::-1]
 
 
 class Node():
@@ -128,58 +177,97 @@ class ATB():
             all_words.append(sets)
 
         return all_words
-
-    def greedy_segment(self, s: str) -> List[str]:
+    
+    def flatten(self, s: str) -> List[List[str]]:
         """
-        Segment string `s` into a list of individual words.
+        Segment string `s` and return a flat list of matches. This method uses non-python-specific code.
         """
-        def _group_matches(matches):
-            """
-            group matches into chunks of overlapping indices
-            """
-            start, end = 0, 1
-            chunks = []
-            curr_chunk = []
-            curr_chunk.append(matches[0][0])  # append the first word
-            for group in matches:
-                for tup in group:
-                    word, ind = tup
-
-                    # if the word starts the same but is longer than we're tracking
-                    if ind[0] == start and ind[-1]+1 > end:
-                        end = ind[-1]+1  # increment end
-                        curr_chunk.append(tup)  # add to working chunk
-
-                    # if the word ends the same place but starts further than we're tracking
-                    elif ind[0] > start and ind[-1]+1 == end:
-                        start = ind[0]  # increment start
-                        curr_chunk.append(tup)  # add to working chunk
-
-                    # if the word begins where our last word ended
-                    elif ind[0] == end:
-                        start = ind[0]  # increment start
-                        end = ind[0]+1  # increment end
-                        # add working chunk to finished chunks
-                        chunks.append(curr_chunk)
-                        curr_chunk = []  # clear working chunk
-                        # put our current word into the new working chunk
-                        curr_chunk.append(tup)
-            if curr_chunk:  # if any is leftover
-                # put the working chunk into finished chunks
-                chunks.append(curr_chunk)
-
-            return chunks  # return finished chunks
-
-        return _group_matches(self.get_matches(s))
-
+        s=re.sub("[\W]", "", s)
+        
+        def _flatten(x): # yes this is python specific, but whatever, it's translateable
+            return sum(map(_flatten, x), []) if isinstance(x, tuple) or isinstance(x, list) else [x]
+        def _pair(x):
+            return [[x[i], x[i+1]] for i in range(0, len(x), 2)]
+        
+        return _pair(_flatten(self.get_matches(s)))
+    
     def _flatten(self, s: str) -> List[Any]:
         """
+        Alternate flatten method; uses python specific code, itertools.
         Return a flat list of `[match, range(start_index, stop_index)]` of all matches
         found in the string `s`.
         """
         return list(itertools.chain(*self.get_matches(s)))
 
+    def greedy_segment(self, s: str) -> List[str]:
+        """
+        Segment string `s` into a list of individual words, greedily.
+        """
+        
+        s = re.sub("[\W]", "", s)
+        
+        i = 0
+        ret = []
+        
+        wds = self.flatten(s)
+        
+        while i < len(wds):
+            group = [ x for x in wds if x[-1][0] == i ]  # find the group of all words that start at index i
+            if group:
+                item = max(group, key=lambda x: len(x[1])) # find the longest one
+                ret.append(item[0])
+                i += len(item[1]) # increase i by its length
+            else:
+                i += 1
+                
+    
     def dijkstra_segment(self, s:str) -> List[str]:
         '''Use Dijkstra's algorithm to traverse a weighted graph of the dictionary matches in string `s`.
         This method prefers word length, minimizing the number of single character words in a segmented sentence.'''
-        pass
+        
+        s = re.sub("[\W]", "", s)
+        g = Graph()
+        Match = namedtuple('Match', ['start', 'end', 'length', 'weight']) # convenience class
+        
+        def _parse_match(m): # convenience function
+            """return word start_index, end_index, length, and calculated edge weight (1 / len^2)"""
+            return m[1][0], m[1][-1]+1, len(m[1]), 1/(len(m[0]) ** 2)
+        
+        # parse out all matches in the sentence
+        matches = [Match(*_parse_match(match)) for match in self.flatten(s)]
+        
+        # populate the graph with edges
+        for ind, match in enumerate(matches): # starting with match
+            for other in matches[ind + 1]: # iterate over all forward matches
+                if other.start == match.end: # if the match ends where the forward one starts
+                    g.add_edge(match.start, other.start, match.weight)
+                    
+        # try to make a path from 0 to the char at the end, decrementing until a path exists
+        x = len(s)
+        while not g.dijkstra(0, x) and x > 0:
+            x -= 1
+        path = g.dijkstra(0, x)[1:]
+        
+        # if we didn't end up making a path then our dijkstra failed
+        if not path:
+            raise Exception("Something went wrong with pathfinding")
+        
+        ## assemble segments into a list
+        segments = []
+        curr_elem = path.pop(0)
+        curr_str = ""
+        
+        for i, letter in enumerate(s):
+            if i == curr_elem and curr_str:
+                segments.append(curr_str)
+                curr_str = "" + letter
+                
+                try:
+                    curr_elem = path.pop(0)
+                except IndexError:
+                    curr_elem = None
+            else:
+                curr_str += letter
+        segments[-1] += curr_str
+        
+        return(segments)
