@@ -220,6 +220,8 @@ class ATB():
             else:
                 i += 1
                 
+        return ret
+                
     
     def dijkstra_segment(self, s:str) -> List[str]:
         '''Use Dijkstra's algorithm to traverse a weighted graph of the dictionary matches in string `s`.
