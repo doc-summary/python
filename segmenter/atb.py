@@ -145,9 +145,11 @@ class ATB():
 
         return results
 
-    def get_matches(self, s: str) -> List[Any]:
+    def prev_get_matches(self, s: str) -> List[Any]:
         '''Search alphaDict dictionary tree for all possible word matches in string s.
-
+        
+        *Previous version of get_matches that couldn't handle numbers in a string.*
+        
         Returns a list composed of tuples of the matching term, and the index range in 
         `s` where that term was found, e.g. (term, range(start_index, stop_index))'''
 
@@ -176,6 +178,59 @@ class ATB():
         if sets:
             all_words.append(sets)
 
+        return all_words
+    
+    def get_matches(self, s: str) -> List[List[Any]]:
+        '''Search alphaDict dictionary tree for all possible word matches in string s.
+        
+        *This function breaks greedy segmenting, when the string contains numbers.*
+        
+        Returns a list composed of tuples of the matching term, and the index range in 
+        `s` where that term was found, e.g. (term, range(start_index, stop_index))'''
+        
+        s = re.sub('[\W]', '', s) # get rid of all non-word chars from s
+        
+        sets = []
+        all_words = []
+        
+        i = 0
+        j = 1
+        while i < len(s):
+            while j < len(s)+1:
+                proto = s[i:j] # make a substring from i to j
+                
+                if s[i].isdigit(): # if s[i] is a number
+                    # collect all following numbers into proto
+                    for ind, letter in enumerate(s[i+1:], start=i+1):
+                        if not letter.isdigit():
+                            break
+                        proto += letter
+                    sets.append((proto, range(i, ind))) # append them as a contiguous word
+                    i = ind # increment the start to next non-digit index
+                    continue # go back to the top
+                
+                result = self.find(proto) # check if the word is in the trie
+                prefix = self.keys_with_prefix( # check if it's a prefix to something
+                    proto) if len(proto) > 1 else [proto] # if it's at least 2 chars long
+                
+                if result: # if it's a word
+                    sets.append((proto, range(i, j))) # log it and its span
+                    
+                else: # if it's not a word
+                    if prefix: # but it's the start of another word
+                        j += 1 # broaden the window
+                        continue # and take it from the top
+                    
+                    else: # otherwise
+                        if sets: # if there's anything to append
+                            all_words.append(tuple(sets)) # log it
+                            sets.clear() # and then clear sets for the next batch
+                        break
+                j += 1
+            i += 1
+        if sets:
+            all_words.append(tuple(sets))
+            
         return all_words
     
     def flatten(self, s: str) -> List[List[str]]:
