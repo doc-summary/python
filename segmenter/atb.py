@@ -188,45 +188,39 @@ class ATB():
         Returns a list composed of tuples of the matching term, and the index range in 
         `s` where that term was found, e.g. (term, range(start_index, stop_index))'''
         
-        s = re.sub('[\W]', '', s) # get rid of all non-word chars from s
-        
         sets = []
         all_words = []
         
         i = 0
-        j = 1
         while i < len(s):
+            j = i+1
             while j < len(s)+1:
                 proto = s[i:j] # make a substring from i to j
                 
-                if s[i].isdigit(): # if s[i] is a number
-                    # collect all following numbers into proto
-                    for ind, letter in enumerate(s[i+1:], start=i+1):
-                        if not letter.isdigit():
-                            break
-                        proto += letter
-                    sets.append((proto, range(i, ind))) # append them as a contiguous word
-                    i = ind # increment the start to next non-digit index
-                    continue # go back to the top
-                
                 result = self.find(proto) # check if the word is in the trie
+                if result:
+                    sets.append((proto, range(i, j)) # append it to sets if it's a word
+                                
                 prefix = self.keys_with_prefix( # check if it's a prefix to something
                     proto) if len(proto) > 1 else [proto] # if it's at least 2 chars long
+                if prefix:
+                    j += 1
+                    continue
                 
-                if result: # if it's a word
-                    sets.append((proto, range(i, j))) # log it and its span
-                    
-                else: # if it's not a word
-                    if prefix: # but it's the start of another word
-                        j += 1 # broaden the window
-                        continue # and take it from the top
-                    
-                    else: # otherwise
-                        if sets: # if there's anything to append
-                            all_words.append(tuple(sets)) # log it
-                            sets.clear() # and then clear sets for the next batch
-                        break
-                j += 1
+                if not result and not s[i] in self.root.children: # if we're operating on an unknown
+                    k = j # start indexing from this point
+                    # add all unknowns to proto
+                    while k < len(s) and not s[k] in self.root.children:
+                        proto += s[k]
+                        k += 1
+                    sets.append((proto, range(i, k)) # add proto to sets
+                    i = k-1 # then start indexing from the next char
+                    break
+                
+                if sets:
+                    all_words.append(tuple(sets))
+                    sets.clear()
+                break
             i += 1
         if sets:
             all_words.append(tuple(sets))
@@ -237,8 +231,6 @@ class ATB():
         """
         Segment string `s` and return a flat list of matches. This method uses non-python-specific code.
         """
-        s=re.sub("[\W]", "", s)
-        
         def _flatten(x): # yes this is python specific, but whatever, it's translateable
             return sum(map(_flatten, x), []) if isinstance(x, tuple) or isinstance(x, list) else [x]
         def _pair(x):
@@ -282,7 +274,6 @@ class ATB():
         '''Use Dijkstra's algorithm to traverse a weighted graph of the dictionary matches in string `s`.
         This method prefers word length, minimizing the number of single character words in a segmented sentence.'''
         
-        s = re.sub("[\W]", "", s)
         g = Graph()
         Match = namedtuple('Match', ['start', 'end', 'length', 'weight']) # convenience class
         
@@ -327,4 +318,4 @@ class ATB():
                 curr_str += letter
         segments[-1] += curr_str
         
-        return(segments)
+        return segments
