@@ -3,6 +3,23 @@ import itertools
 from collections import defaultdict, namedtuple
 import re
 
+
+def is_chinese_char(c):
+    '''
+    Check if a character falls within Chinese unicode values
+    
+    note: combined code pages:
+    0x2a700 - 0x2b73f, 0x2b740 - 0x2b81f, 0x2b820 - 0x2ceaf
+    '''
+    n = ord(c)
+    return (0x3400  <= n <= 0x4dbf or
+            0x4e00  <= n <= 0x9fff or
+            0xf900  <= n <= 0xfaff or
+            0x20000 <= n <= 0x2a6df or
+            0x2a700 <= n <= 0x2ceaf or
+            0x2f800 <= n <= 0x2fa1f) 
+
+
 class Graph():
     """Simple graph obj to work with Dijkstra's Algorithm"""
     def __init__(self):
@@ -90,7 +107,7 @@ class ATB():
             node = node.children[char]
 
         node.value = value
-
+    
     def delete(self, key: str) -> bool:
         '''delete `key` from the trie, recursively, if `key` exists in trie.'''
 
@@ -144,7 +161,39 @@ class ATB():
         _collect(x, list(prefix), results)
 
         return results
-
+    
+    def _preprocess(self, s:str, language:str = "Chinese") -> List[Any]:
+        '''
+        Preprocess string s into chunks of `language` and `not language`.
+        returns a list of `[ contains_language:bool, chunk:str, offset:int]`
+        '''
+        
+        validator = {"Chinese" : is_chinese_char}.get(language) # this is temporary
+        if not validator:
+            print("Validator not found, defaulting to Chinese", file=sys.stderr)
+            validator = is_chinese_char
+            
+        sets = []
+        st = ""
+        
+        changed = False
+        prev = None
+        curr = validator(s[0])
+        
+        # go char by char through string s
+        i, j = 0, 0
+        for i in range(len(s)):
+            prev = curr
+            curr = validator(s[i]) # validate current char
+            changed = prev != curr 
+            if not changed:
+                st += s[i] # add to the current chunk
+            else:
+                sets.append([prev, st, j]) # finish off the last chunk
+                st = s[i] # start a new chunk with the current char
+                j = i # mark the start of the new chunk
+        sets.append([curr, st, j])
+        
     def prev_get_matches(self, s: str) -> List[Any]:
         '''Search alphaDict dictionary tree for all possible word matches in string s.
         
@@ -180,7 +229,7 @@ class ATB():
 
         return all_words
     
-    def get_matches(self, s: str) -> List[List[Any]]:
+    def get_matches(self, st: str, language:str = "Chinese") -> List[List[Any]]:
         '''Search alphaDict dictionary tree for all possible word matches in string s.
         
         *This function breaks greedy segmenting, when the string contains numbers.*
@@ -191,39 +240,51 @@ class ATB():
         sets = []
         all_words = []
         
-        i = 0
-        while i < len(s):
-            j = i+1
-            while j < len(s)+1:
-                proto = s[i:j] # make a substring from i to j
-                
-                result = self.find(proto) # check if the word is in the trie
-                if result:
-                    sets.append((proto, range(i, j)) # append it to sets if it's a word
-                                
-                prefix = self.keys_with_prefix( # check if it's a prefix to something
-                    proto) if len(proto) > 1 else [proto] # if it's at least 2 chars long
-                if prefix:
-                    j += 1
-                    continue
-                
-                if not result and not s[i] in self.root.children: # if we're operating on an unknown
-                    k = j # start indexing from this point
-                    # add all unknowns to proto
-                    while k < len(s) and not s[k] in self.root.children:
-                        proto += s[k]
-                        k += 1
-                    sets.append((proto, range(i, k)) # add proto to sets
-                    i = k-1 # then start indexing from the next char
-                    break
-                
+        for process_chunk in self._preprocess(st, language):
+            offset = process_chunk[-1]
+            s = process_chunk[1]
+            
+            if process_chunk[0]:
+                i = 0
+                while i < len(s):
+                    j = i+1
+                    while j < len(s)+1:
+                        proto = s[i:j] # make a substring from i to j
+
+                        result = self.find(proto) # check if the word is in the trie
+                        if result:
+                            sets.append((proto, range(i+offset, j+offset)) # append it to sets if it's a word
+
+                        prefix = self.keys_with_prefix(proto) if len(proto) > 1 else [proto]
+                        if prefix:
+                            j += 1
+                            continue
+
+                        if not result and not s[i] in self.root.children: # if we're operating on an unknown
+                            k = j # start indexing from this point
+                            # add all unknowns to proto
+                            while k < len(s) and not s[k] in self.root.children:
+                                proto += s[k]
+                                k += 1
+                            sets.append((proto, range(
+                                i + offset, 
+                                k + offset))) # add proto to sets
+                            i = k-1 # then start indexing from the next char
+                            break
+
+                        if sets:
+                            all_words.append(tuple(sets))
+                            sets.clear()
+                        break
+                    i += 1
                 if sets:
                     all_words.append(tuple(sets))
-                    sets.clear()
-                break
-            i += 1
-        if sets:
-            all_words.append(tuple(sets))
+            else:
+                all_words.append(
+                    (process_chunk[1],
+                      range(offset,
+                            offset + len(process_chunk[1]))
+                    ))
             
         return all_words
     
@@ -316,6 +377,6 @@ class ATB():
                     curr_elem = None
             else:
                 curr_str += letter
-        segments[-1] += curr_str
+        segments.append(curr_str)
         
         return segments
